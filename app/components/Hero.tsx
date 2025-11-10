@@ -2,13 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import Footer from "./Footer";
 
-type Role = "system" | "assistant" | "user" | "developer";
-
-export default function Home() {
+export default function Hero() {
     return (
-        <div className="min-h-screen flex flex-col">
-            <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-20">
+        <section className="min-h-screen flex flex-col">
+            <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-12 md:py-16">
                 <h1 className="text-3xl md:text-5xl font-semibold max-w-2xl leading-snug">
                     Ask the version of you that others only imagine — the one they wish they could
                     talk to.
@@ -29,14 +28,18 @@ export default function Home() {
                         </Link>
                     </Button>
                     <Button
+                        asChild
                         size="lg"
                         variant="outline"
                         className="px-8 py-6 text-lg font-medium hover:cursor-pointer"
                     >
-                        Create your persona
+                        <Link href="/create-persona" scroll={false}>
+                            Create your persona
+                        </Link>
                     </Button>
                 </div>
             </main>
-        </div>
+            <Footer />
+        </section>
     );
 }
