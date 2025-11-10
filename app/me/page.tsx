@@ -7,21 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// change id of each object in sequential manner
-const mockMessages = [
-    {
-        id: 1,
-        sender: "persona",
-        text: "Hey there! I’m your persona — ready to show you how it feels when someone chats with you.",
-        time: "2:43 PM",
-    },
-    {
-        id: 2,
-        sender: "user",
-        text: "That’s awesome. I can’t wait to see how this works!",
-        time: "2:44 PM",
-    },
-];
+export type UIMessage = {
+    id: string;
+    sender: "user" | "assistant";
+    text: string;
+    time: string;
+};
+
+export type LLMMessage = {
+    role: "system" | "user" | "assistant";
+    content: string;
+};
 
 interface ChatPageProps {
     personaName: string;
@@ -32,7 +28,7 @@ export default function ChatPage({
     personaName = "Ashish Shah",
     personaImage = "/meme.png",
 }: ChatPageProps) {
-    const [messages, setMessages] = useState(mockMessages);
+    const [messages, setMessages] = useState<UIMessage[]>([]);
     const [input, setInput] = useState("");
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -40,27 +36,66 @@ export default function ChatPage({
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    const handleSend = () => {
+    useEffect(() => {
+        localStorage.clear();
+    }, []);
+
+    const handleSend = async () => {
         if (!input.trim()) return;
-        const newMessage = {
-            id: Date.now(),
+
+        const userMessage: UIMessage = {
+            id: crypto.randomUUID(),
             sender: "user",
             text: input.trim(),
             time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
-        setMessages([...messages, newMessage]);
+
+        setMessages((prev) => [...prev, userMessage]);
         setInput("");
 
-        setTimeout(() => {
-            const reply = {
-                id: Date.now() + 1,
-                sender: "persona",
-                text: "Interesting thought! That’s exactly how your persona might respond in real time.",
+        const llmChatHistory: LLMMessage[] = JSON.parse(
+            localStorage.getItem("chat-history") || "[]"
+        );
+
+        llmChatHistory.push({
+            role: "user",
+            content: input.trim(),
+        });
+
+        localStorage.setItem("chat-history", JSON.stringify(llmChatHistory));
+
+        const response = await fetch("/api/me", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ messages: llmChatHistory }),
+        });
+
+        const data = await response.json();
+        console.log("data receive from backedn", data);
+
+        if (data.reply) {
+            const assistantReply: UIMessage = {
+                id: crypto.randomUUID(),
+                sender: "assistant",
+                text: data.reply,
                 time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             };
-            setMessages((prev) => [...prev, reply]);
-        }, 1500);
+            setMessages((pre) => [...pre, assistantReply]);
+
+            llmChatHistory.push({
+                role: "assistant",
+                content: data.reply,
+            });
+
+            localStorage.setItem("chat-history", JSON.stringify(llmChatHistory));
+        } else {
+            console.log("Something went wrong, try again!");
+        }
     };
+
+    const [userMessage, setUserMessage] = useState<string>("");
 
     return (
         <div className="flex justify-center items-center min-h-screen bg-background text-foreground">
@@ -79,10 +114,10 @@ export default function ChatPage({
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.2 }}
                                 className={`flex ${
-                                    msg.sender === "persona" ? "justify-start" : "justify-end"
+                                    msg.sender === "assistant" ? "justify-start" : "justify-end"
                                 }`}
                             >
-                                {msg.sender === "persona" && (
+                                {msg.sender === "assistant" && (
                                     <div className="flex items-start gap-3 max-w-[80%]">
                                         <Image
                                             src={personaImage}

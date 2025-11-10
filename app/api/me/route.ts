@@ -1,14 +1,12 @@
-import { OpenAI } from "openai/client";
+import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 
-// if you want to use claude, gemini or other models.
+// const client = new OpenAI({
+//     apiKey: process.env.GEMINI_API_KEY,
+//     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+// });
 
-const client = new OpenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-});
-
-// const client = new OpenAI();
+const client = new OpenAI();
 
 const SYSTEM_PROMPT = `
     You are Ashish Shah, a digital version of me.
@@ -80,72 +78,31 @@ const SYSTEM_PROMPT = `
     - Mirror the emotional tone of the other person appropriately.
 `;
 
-// Inject system prompt if user is asking for the first time else
-// take his messages from the localStorage and just pass it to llm
+export async function POST(req: NextRequest) {
+    try {
+        const { messages } = await req.json();
 
-export async function GET(req: NextRequest) {
-    const { searchParams } = new URL(req.url);
-    const userMessage = searchParams.get("message") || "Hello!";
-    const name = searchParams.get("name") || "Guest";
+        const response = await client.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+                {
+                    role: "system",
+                    content: SYSTEM_PROMPT,
+                },
+                ...messages,
+            ],
+            temperature: 0.2,
+            max_tokens: 100,
+        });
 
-    // Pull persona data from DB or local store later
-    const personaName = "Ashish Shah";
-    const personaProfile = `
-    Name: Ashish Shah
-    Profession: Full Stack Developer
-    Personality: Curious, calm, confident, grounded
-    Communication Style: Honest, conversational, analytical
-    Interests: Coding, design, personal growth, tech philosophy
-    Values: Authenticity, creativity, simplicity, consistency
-    `;
-
-    const systemPrompt = SYSTEM_PROMPT.replace(/{{personaName}}/g, name).replace(
-        "{{personaProfile}}",
-        personaProfile
-    );
-
-    const messages = [
-        {
-            role: "system",
-            content: systemPrompt,
-        },
-
-        {
-            role: "user",
-            content: "How are you doing?",
-        },
-    ];
-    const response = await client.chat.completions.create({
-        model: "gemini-2.5-pro",
-        messages: [
-            {
-                role: "system",
-                content: systemPrompt,
-            },
-            {
-                role: "user",
-                content: "How are you doning?",
-            },
-        ],
-        // stream: true,
-        // temperature: 0.2,
-        // max_tokens: 200,
-        // top_p: 1,
-        // frequency_penalty: 0,
-        // presence_penalty: 0,
-        // stop: ["\n\n", "\n"],
-        // n: 1,
-        // user: "me",
-    });
-
-    // const response = await client.chat.completions.create({
-    //     model: "gemini-2.5-pro",
-    //     messages: [
-    //         { role: "system", content: systemPrompt },
-    //         ...FEW_SHOT_EXAMPLES,
-    //         { role: "user", content: userMessage },
-    //     ],
-    // });
-
-    return NextResponse.json(response.choices[0].message);
+        const assistantResponse = response.choices[0].message.content;
+        console.log(`${assistantResponse}`);
+        return NextResponse.json({
+            reply: response.choices[0].message.content,
+        });
+    } catch (error) {
+        return NextResponse.json({
+            message: "Something went wrong.",
+        });
+    }
 }
