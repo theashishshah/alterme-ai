@@ -31,6 +31,7 @@ export default function ChatPage({
     const [messages, setMessages] = useState<UIMessage[]>([]);
     const [input, setInput] = useState("");
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const [showPayPopup, setShowPayPopup] = useState(false);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -42,7 +43,6 @@ export default function ChatPage({
 
     const handleSend = async () => {
         if (!input.trim()) return;
-
         const userMessage: UIMessage = {
             id: crypto.randomUUID(),
             sender: "user",
